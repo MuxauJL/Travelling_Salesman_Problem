@@ -58,6 +58,7 @@ void TSP::solve(int a, int b)
 			else
 				sub.greedy_solve();
 	}
+
 	//external connections
 	int size = subtasks->size();
 	std::vector<int> clusters_permutation;
@@ -80,13 +81,110 @@ void TSP::solve(int a, int b)
 				clusters_centers[next]);
 			current = next;
 		}
+		path_length += distance(clusters_centers.back(), clusters_centers.front());
 		if (min_length > path_length) {
 			min_length = path_length;
 			best_permutation = clusters_permutation;
 		}
 	} while (std::next_permutation(clusters_permutation.begin(), clusters_permutation.end()));
+
 	//clusters union
-	//restoration();
+	size = cities.size();
+	permutation = std::vector<int>(size);
+	permutation.reserve(size);
+	int current = best_permutation[0];
+	int next = best_permutation[1];
+	auto& cities_curr = (*subtasks)[current].cities;
+	auto& cities_next = (*subtasks)[next].cities;
+	int size_curr = cities_curr.size();
+	int size_next = cities_next.size();
+	double min_dist = DBL_MAX;
+	//std::pair<int, int> nearest;
+	int local_idx_next_begin = -1;
+	int local_idx_curr_begin = -1;
+	for (int i_curr = 0; i_curr < size_curr; ++i_curr)
+		for (int i_next = 0; i_next < size_next; ++i_next) {
+			double d = distance(cities_curr[i_curr],
+				cities_next[i_next]);
+			if (min_dist > d) {
+				min_dist = d;
+				/*nearest.first = cities_curr[i_curr].number;
+				nearest.second = cities_next[i_next].number;*/
+				local_idx_curr_begin = i_curr;
+				local_idx_next_begin = i_next;
+			}
+		}
+	permutation.push_back(cities_curr[local_idx_curr_begin].number);
+	permutation.push_back(cities_next[local_idx_next_begin].number);
+
+	//local indexes in the first cluster (*subtasks)[best_permutation[0]],
+	//one of them will be the last in the Hamilton cycle
+	int last_pair[2];
+	last_pair[0] = local_idx_curr_begin - 1 < 0 ? cities_curr.size() - 1 : local_idx_curr_begin - 1;
+	last_pair[1] = local_idx_curr_begin + 1 >= cities_curr.size() ? 0 : local_idx_curr_begin + 1;
+	//the local index of the city, which is start and end of the Hamilton cycle
+	int local_idx_end = local_idx_curr_begin;
+
+	current = next;
+	local_idx_curr_begin = local_idx_next_begin;
+	for (int i = 2; i < best_permutation.size(); ++i) {
+		cities_curr = (*subtasks)[current].cities;
+		int local_idx_curr_end = -1;
+		int current_pair[2];
+		current_pair[0] = local_idx_curr_begin - 1 < 0 ? cities_curr.size() - 1 : local_idx_curr_begin - 1;
+		current_pair[1] = local_idx_curr_begin + 1 >= cities_curr.size() ? 0 : local_idx_curr_begin + 1;
+		double min_dist = DBL_MAX;
+		next = best_permutation[i];
+		cities_next = (*subtasks)[next].cities;
+		size_next = cities_next.size();
+		for (int i_curr : current_pair)
+			for (int i_next = 0; i_next < size_next; ++i_next) {
+				double d = distance(cities_curr[i_curr], cities_next[i_next]);
+				if (min_dist > d) {
+					min_dist = d;
+					/*nearest.first = cities_curr[i_curr].number;
+					nearest.second = cities_next[i_next].number;*/
+					local_idx_curr_end = i_curr;
+					local_idx_next_begin = i_next;
+				}
+			}
+		insert_cycle_to_permutation(local_idx_curr_begin, local_idx_curr_end,
+			cities_curr);
+		permutation.push_back(cities_next[local_idx_next_begin].number);
+		current = next;
+	}
+
+	//end of restoration
+	cities_curr = (*subtasks)[current].cities;
+	local_idx_curr_begin = local_idx_next_begin;
+	int local_idx_curr_end = -1;
+	int current_pair[2];
+	current_pair[0] = local_idx_curr_begin - 1 < 0 ? cities_curr.size() - 1 : local_idx_curr_begin - 1;
+	current_pair[1] = local_idx_curr_begin + 1 >= cities_curr.size() ? 0 : local_idx_curr_begin + 1;
+	min_dist = DBL_MAX;
+	next = best_permutation[0];
+	cities_next = (*subtasks)[next].cities;
+	for (int i_curr : current_pair)
+		for (int i_next : last_pair) {
+			double d = distance(cities_curr[i_curr], cities_next[i_next]);
+			if (min_dist > d) {
+				min_dist = d;
+				/*nearest.first = cities_curr[i_curr].number;
+				nearest.second = cities_next[i_next].number;*/
+				local_idx_curr_end = i_curr;
+				local_idx_next_begin = i_next;
+			}
+		}
+	insert_cycle_to_permutation(local_idx_curr_begin, local_idx_curr_end,
+		cities_curr);
+	permutation.push_back(cities_next[local_idx_next_begin].number);
+
+	//last cycle
+	cities_curr = (*subtasks)[next].cities;
+	local_idx_curr_begin = local_idx_next_begin;
+	local_idx_curr_end = local_idx_end;
+	insert_cycle_to_permutation(local_idx_curr_begin, local_idx_curr_end,
+		cities_curr);
 }
 
 const int* TSP::get_solution()
@@ -182,4 +280,25 @@ TSP::Point TSP::get_center()
 			return sum + city.y;
 		});
 	return Point(accum_x / cities.size(), accum_y / cities.size());
+}
+
+void TSP::insert_cycle_to_permutation(int local_idx_curr_begin, int local_idx_curr_end,
+	const std::vector<TSP::City>& cities_curr)
+{
+	int step = 0;
+	int local_idx_next = local_idx_curr_begin + 1 >= cities_curr.size() ? 0 : local_idx_curr_begin + 1;
+	if (local_idx_next == local_idx_curr_end)
+		step = -1;
+	else
+		step = 1;
+	local_idx_next = local_idx_curr_begin;
+	int size_curr = cities_curr.size();
+	do {
+		local_idx_next += step;
+		if (local_idx_next == size_curr)
+			local_idx_next = 0;
+		if (local_idx_next == -1)
+			local_idx_next = size_curr - 1;
+		permutation.push_back(cities_curr[local_idx_next].number);
+	} while (local_idx_next != local_idx_curr_end);
 }

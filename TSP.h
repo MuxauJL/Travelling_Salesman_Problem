@@ -9,6 +9,7 @@ public:
 		int number;
 		double x;
 		double y;
+		City() = default;
 		City(int n, double x, double y) :
 			number(n), x(x), y(y) {}
 	};
@@ -32,5 +33,7 @@ public:
 private:
 	std::vector<City> cities;
 	std::vector<int> permutation;
+	void insert_cycle_to_permutation(int local_idx_curr_begin, int local_idx_curr_end,
+		const std::vector<TSP::City>& cities_curr);
 };
 
