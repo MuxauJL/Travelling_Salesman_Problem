@@ -22,7 +22,7 @@ int main() {
 		"task_4_6_n8246.txt"
 	};
 
-	for (size_t i = 0; i < 1/*files.size()*/; ++i) {
+	for (size_t i = 0; i < files.size(); ++i) {
 		std::ifstream in(dir + files[i]);
 		int size;
 		TSP tsp;
@@ -39,9 +39,7 @@ int main() {
 		int a = 10;
 		int b = 3;
 		tsp.solve(a, b);
-		for (auto city_number : tsp.get_solution())
-			std::cout << city_number << " ";
-		std::cout << std::endl;
+		printf("%d) distance: %f\n", i + 1, tsp.get_total_length());
 		in.close();
 	}
 	return 0;

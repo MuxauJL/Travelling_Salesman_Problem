@@ -42,28 +42,8 @@ void TSP::greedy_solve()
 	}
 }
 
-void TSP::restoration()
+void TSP::restoration(const std::vector<TSP>* subtasks)
 {
-}
-
-void TSP::solve(int a, int b)
-{
-	//reduction
-	std::unique_ptr<std::vector<TSP>> subtasks;
-	if (b > 0 && cities.size() > a) {
-		subtasks = std::unique_ptr<std::vector<TSP>>(reduction(a));
-		for (auto& sub : *subtasks)
-			if (sub.cities.size() > 3)
-				sub.solve(a, --b);
-			else
-				sub.greedy_solve();
-	}
-	else
-	{
-		greedy_solve();
-		return;
-	}
-
 	//external connections
 	int size = subtasks->size();
 	std::vector<int> clusters_permutation;
@@ -135,7 +115,6 @@ void TSP::solve(int a, int b)
 	int local_idx_end = local_idx_curr_begin;
 
 	current = next;
-	//local_idx_curr_begin = local_idx_next_begin;
 	for (int i = 2; i < best_permutation.size(); ++i) {
 		local_idx_curr_begin = local_idx_next_begin;
 		subtask_curr = &(*subtasks)[current];
@@ -204,9 +183,42 @@ void TSP::solve(int a, int b)
 		(*subtasks)[next]);
 }
 
+void TSP::solve(int a, int b)
+{
+	//reduction
+	std::unique_ptr<std::vector<TSP>> subtasks;
+	if (b > 0 && cities.size() > a) {
+		subtasks = std::unique_ptr<std::vector<TSP>>(reduction(a));
+		for (auto& sub : *subtasks)
+			if (sub.cities.size() > 3)
+				sub.solve(a, --b);
+			else
+				sub.greedy_solve();
+	}
+	else
+	{
+		greedy_solve();
+		return;
+	}
+	restoration(subtasks.get());
+}
+
 std::vector<int> TSP::get_solution()
 {
 	return permutation;
+}
+
+double TSP::get_total_length()
+{
+	double dist = 0;
+	int current = permutation[0];
+	for (int i = 1; i < permutation.size(); ++i) {
+		int next = permutation[i];
+		dist += distance(cities[current], cities[next]);
+		current = next;
+	}
+	dist += distance(cities[current], cities[permutation[0]]);
+	return dist;
 }
 
 std::vector<TSP>* TSP::reduction(int a)
@@ -291,7 +303,7 @@ double TSP::distance(const City* c1, const City* c2)
 	return distance(Point(c1->x, c1->y), Point(c2->x, c2->y));
 }
 
-TSP::Point TSP::get_center()
+TSP::Point TSP::get_center() const
 {
 	double accum_x = std::accumulate(cities.begin(), cities.end(), 0.0,
 		[](double sum, const auto& city) {
@@ -309,8 +321,6 @@ void TSP::insert_cycle_to_permutation(int local_idx_curr_begin, int local_idx_cu
 {
 	if (subtask.cities.size() == 1)
 		return;
-	/*if (local_idx_curr_begin == local_idx_curr_end)
-		return;*/
 	int size_curr = subtask.cities.size();
 	int permutation_idx = find_permutation_idx(subtask, local_idx_curr_begin);	
 	int step = 0;

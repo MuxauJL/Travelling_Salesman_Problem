@@ -24,13 +24,14 @@ public:
 	void add_city(City city);
 	void solve(int a, int b);
 	std::vector<int> get_solution();
+	double get_total_length();
 	std::vector<TSP>* reduction(int a);
 	void greedy_solve();
-	void restoration();
+	void restoration(const std::vector<TSP> * subtasks);
 	double distance(const Point& p1, const Point& p2);
 	double distance(const City& c1, const City& c2);
 	double distance(const City* c1, const City* c2);
-	Point get_center();
+	Point get_center() const;
 private:
 	std::vector<City> cities;
 	std::vector<int> permutation;
