@@ -23,17 +23,20 @@ public:
 	TSP(const std::vector<City>& cities);
 	void add_city(City city);
 	void solve(int a, int b);
-	const int* get_solution();
+	std::vector<int> get_solution();
 	std::vector<TSP>* reduction(int a);
 	void greedy_solve();
 	void restoration();
 	double distance(const Point& p1, const Point& p2);
 	double distance(const City& c1, const City& c2);
+	double distance(const City* c1, const City* c2);
 	Point get_center();
 private:
 	std::vector<City> cities;
 	std::vector<int> permutation;
 	void insert_cycle_to_permutation(int local_idx_curr_begin, int local_idx_curr_end,
-		const std::vector<TSP::City>& cities_curr);
+		const TSP& subtask);
+	int find_local_city_idx(int number);
+	int find_permutation_idx(const TSP& task, int local_idx);
 };
 
