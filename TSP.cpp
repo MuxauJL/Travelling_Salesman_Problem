@@ -42,9 +42,8 @@ void TSP::greedy_solve()
 	}
 }
 
-void TSP::restoration(const std::vector<TSP>* subtasks)
-{
-	//external connections
+std::vector<int>* TSP::external_permutation(const std::vector<TSP>* subtasks) {
+	// find the best permutation for external connections
 	int size = subtasks->size();
 	std::vector<int> clusters_permutation;
 	std::vector<Point> clusters_centers;
@@ -55,7 +54,8 @@ void TSP::restoration(const std::vector<TSP>* subtasks)
 		clusters_centers.emplace_back((*subtasks)[i].get_center());
 	}
 	double min_length = DBL_MAX;
-	std::vector<int> best_permutation;
+	std::vector<int>* best_permutation = new std::vector<int>();
+	best_permutation->reserve(size);
 	double path_length = 0;
 	do {
 		path_length = 0;
@@ -71,16 +71,23 @@ void TSP::restoration(const std::vector<TSP>* subtasks)
 			clusters_centers[clusters_permutation[0]]);
 		if (min_length > path_length) {
 			min_length = path_length;
-			best_permutation = clusters_permutation;
+			*best_permutation = clusters_permutation;
 		}
 	} while (std::next_permutation(clusters_permutation.begin(), clusters_permutation.end()));
+	return best_permutation;
+}
+
+void TSP::restoration(const std::vector<TSP>* subtasks)
+{
+	//external connections
+	auto best_permutation = std::unique_ptr<std::vector<int>>(external_permutation(subtasks));
 
 	//clusters union
-	size = cities.size();
+	int size = cities.size();
 	permutation = std::vector<int>();
 	permutation.reserve(size);
-	int current = best_permutation[0];
-	int next = best_permutation[1];
+	int current = (*best_permutation)[0];
+	int next = (*best_permutation)[1];
 	auto* subtask_curr = &(*subtasks)[current];
 	auto* subtask_next = &(*subtasks)[next];
 	int size_curr = subtask_curr->cities.size();
@@ -115,7 +122,7 @@ void TSP::restoration(const std::vector<TSP>* subtasks)
 	int local_idx_end = local_idx_curr_begin;
 
 	current = next;
-	for (int i = 2; i < best_permutation.size(); ++i) {
+	for (int i = 2; i < (*best_permutation).size(); ++i) {
 		local_idx_curr_begin = local_idx_next_begin;
 		subtask_curr = &(*subtasks)[current];
 		size_curr = subtask_curr->cities.size();
@@ -129,7 +136,7 @@ void TSP::restoration(const std::vector<TSP>* subtasks)
 			subtask_curr->permutation[0] :
 			subtask_curr->permutation[permutation_idx + 1];
 		double min_dist = DBL_MAX;
-		next = best_permutation[i];
+		next = (*best_permutation)[i];
 		subtask_next = &(*subtasks)[next];
 		size_next = subtask_next->cities.size();
 		for (int i_curr : current_pair)
@@ -161,7 +168,7 @@ void TSP::restoration(const std::vector<TSP>* subtasks)
 		subtask_curr->permutation[0] :
 		subtask_curr->permutation[permutation_idx + 1];
 	min_dist = DBL_MAX;
-	next = best_permutation[0];
+	next = (*best_permutation)[0];
 	subtask_next = &(*subtasks)[next];
 	for (int i_curr : current_pair)
 		for (int i_next : last_pair) {
@@ -191,7 +198,7 @@ void TSP::solve(int a, int b)
 		subtasks = std::unique_ptr<std::vector<TSP>>(reduction(a));
 		for (auto& sub : *subtasks)
 			if (sub.cities.size() > 3)
-				sub.solve(a, --b);
+				sub.solve(a, b - 1);
 			else
 				sub.greedy_solve();
 	}

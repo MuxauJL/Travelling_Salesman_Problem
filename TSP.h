@@ -25,16 +25,17 @@ public:
 	void solve(int a, int b);
 	std::vector<int> get_solution();
 	double get_total_length();
-	std::vector<TSP>* reduction(int a);
 	void greedy_solve();
-	void restoration(const std::vector<TSP> * subtasks);
+private:
+	std::vector<City> cities;
+	std::vector<int> permutation;
+	std::vector<TSP>* reduction(int a);
+	void restoration(const std::vector<TSP>* subtasks);
+	std::vector<int>* external_permutation(const std::vector<TSP>* subtasks);
 	double distance(const Point& p1, const Point& p2);
 	double distance(const City& c1, const City& c2);
 	double distance(const City* c1, const City* c2);
 	Point get_center() const;
-private:
-	std::vector<City> cities;
-	std::vector<int> permutation;
 	void insert_cycle_to_permutation(int local_idx_curr_begin, int local_idx_curr_end,
 		const TSP& subtask);
 	int find_local_city_idx(int number);
