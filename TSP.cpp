@@ -197,10 +197,7 @@ void TSP::solve(int a, int b)
 	if (b > 0 && cities.size() > a) {
 		subtasks = std::unique_ptr<std::vector<TSP>>(reduction(a));
 		for (auto& sub : *subtasks)
-			if (sub.cities.size() > 3)
-				sub.solve(a, b - 1);
-			else
-				sub.greedy_solve();
+			sub.solve(a, b - 1);
 	}
 	else
 	{
@@ -293,6 +290,86 @@ std::vector<TSP>* TSP::reduction(int a)
 	return subtasks;
 }
 
+std::vector<TSP>* TSP::my_reduction(int a)
+{
+	double max_dist = 0;
+	std::pair<int, int> argmax;
+	for (int i = 0; i < cities.size() - 1; ++i)
+		for (int j = i + 1; j < cities.size(); ++j) {
+			double d = distance(cities[i], cities[j]);
+			if (d > max_dist) {
+				max_dist = d;
+				argmax.first = i;
+				argmax.second = j;
+			}
+		}
+
+	std::vector<int> centers = { argmax.first, argmax.second };
+	while (centers.size() < a) {
+		max_dist = 0;
+		int furthest;
+		for (int i = 0; i < cities.size(); ++i) {
+			double d = 0;
+			for (int center : centers)
+				if (i != center)
+					d += distance(cities[i], cities[center]);
+				else {
+					d = 0;
+					break;
+				}
+
+			if (d > max_dist) {
+				max_dist = d;
+				furthest = i;
+			}
+		}
+		centers.push_back(furthest);
+	}
+
+	struct Cluster {
+		Point center;
+		std::vector<int> cities_idx;
+		Cluster() {}
+		void add_city_idx(int city_idx) {
+			cities_idx.push_back(city_idx);
+		}
+	};
+
+	std::vector<Cluster> clusters(a);
+	for (int i = 0; i < a; ++i) {
+		clusters[i].center = Point(cities[centers[i]].x, cities[centers[i]].y);
+	}
+	for (int i = 0; i < cities.size(); ++i) {
+		double min_dist = DBL_MAX;
+		int nearest_cluster_idx = -1;
+		Point curr_city = Point(cities[i].x, cities[i].y);
+		for (int j = 0; j < clusters.size(); ++j) {
+			if (i == centers[j]) {
+				min_dist = 0;
+				nearest_cluster_idx = j;
+				break;
+			}
+			double d = distance(curr_city, clusters[j].center);
+			if (min_dist > d) {
+				min_dist = d;
+				nearest_cluster_idx = j;
+			}
+		}
+		clusters[nearest_cluster_idx].add_city_idx(i);
+		clusters[nearest_cluster_idx].center = 
+			get_center(clusters[nearest_cluster_idx].cities_idx);
+	}
+
+	std::vector<TSP>* subtasks = new std::vector<TSP>();
+	subtasks->reserve(clusters.size());
+	for (auto cluster : clusters) {
+		subtasks->emplace_back(TSP());
+		for (int i = 0; i < cluster.cities_idx.size(); ++i)
+			subtasks->back().add_city(cities[cluster.cities_idx[i]]);
+	}
+	return subtasks;
+}
+
 double TSP::distance(const Point& p1, const Point& p2)
 {
 	double x_diff = p1.x - p2.x;
@@ -321,6 +398,24 @@ TSP::Point TSP::get_center() const
 			return sum + city.y;
 		});
 	return Point(accum_x / cities.size(), accum_y / cities.size());
+}
+
+TSP::Point TSP::get_center(const std::vector<int>& cities_idx) const
+{
+	std::vector<Point> cluster;
+	cluster.reserve(cities_idx.size());
+	for (auto city_idx : cities_idx)
+		cluster.emplace_back(Point(cities[city_idx].x, cities[city_idx].y));
+
+	double accum_x = std::accumulate(cluster.begin(), cluster.end(), 0.0,
+		[](double sum, const auto& point) {
+			return sum + point.x;
+		});
+	double accum_y = std::accumulate(cluster.begin(), cluster.end(), 0.0,
+		[](double sum, const auto& point) {
+			return sum + point.y;
+		});
+	return Point(accum_x / cluster.size(), accum_y / cluster.size());
 }
 
 void TSP::insert_cycle_to_permutation(int local_idx_curr_begin, int local_idx_curr_end,
