@@ -195,7 +195,7 @@ void TSP::solve(int a, int b)
 	//reduction
 	std::unique_ptr<std::vector<TSP>> subtasks;
 	if (b > 0 && cities.size() > a) {
-		subtasks = std::unique_ptr<std::vector<TSP>>(reduction(a));
+		subtasks = std::unique_ptr<std::vector<TSP>>(my_reduction(a));
 		for (auto& sub : *subtasks)
 			sub.solve(a, b - 1);
 	}
@@ -334,21 +334,25 @@ std::vector<TSP>* TSP::my_reduction(int a)
 			cities_idx.push_back(city_idx);
 		}
 	};
+	auto already_used = [&centers](int idx) {
+		for (auto center : centers)
+			if (center == idx)
+				return true;
+		return false;
+	};
 
 	std::vector<Cluster> clusters(a);
 	for (int i = 0; i < a; ++i) {
+		clusters[i].add_city_idx(centers[i]);
 		clusters[i].center = Point(cities[centers[i]].x, cities[centers[i]].y);
 	}
 	for (int i = 0; i < cities.size(); ++i) {
+		if (already_used(i))
+			continue;
 		double min_dist = DBL_MAX;
 		int nearest_cluster_idx = -1;
 		Point curr_city = Point(cities[i].x, cities[i].y);
-		for (int j = 0; j < clusters.size(); ++j) {
-			if (i == centers[j]) {
-				min_dist = 0;
-				nearest_cluster_idx = j;
-				break;
-			}
+		for (int j = 0; j < clusters.size(); ++j) {			
 			double d = distance(curr_city, clusters[j].center);
 			if (min_dist > d) {
 				min_dist = d;
